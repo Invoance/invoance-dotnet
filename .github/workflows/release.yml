@@ -1,0 +1,70 @@
+# Auto-publish to NuGet.org when a tag matching `v*` is pushed.
+#
+# NuGet uses an API key (its OIDC "Trusted Publishing" is still limited), so this
+# needs one repo secret: NUGET_API_KEY.
+#
+# To release:
+#   1. Bump <Version> in src/Invoance/Invoance.csproj, update CHANGELOG.md,
+#      commit, push to main.
+#   2. Tag and push:
+#        git tag v0.1.0 -m "0.1.0"
+#        git push origin v0.1.0
+#   3. This workflow verifies the tag, tests, packs, and pushes to NuGet.
+#
+# One-time setup:
+#   1. Create the API key at https://www.nuget.org/account/apikeys
+#      (scope: Push new packages and package versions; glob: Invoance).
+#   2. Add it as repo secret NUGET_API_KEY (Settings -> Secrets -> Actions).
+
+name: Release to NuGet
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write        # to create the GitHub Release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Verify tag matches csproj version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(grep -oE '<Version>[^<]+' src/Invoance/Invoance.csproj | sed -E 's/<Version>//')
+          if [ "$TAG" != "$PKG" ]; then
+            echo "ERROR: tag $GITHUB_REF_NAME does not match csproj <Version> $PKG" >&2
+            exit 1
+          fi
+          echo "Tag $GITHUB_REF_NAME matches csproj <Version> $PKG"
+
+      - run: dotnet restore
+      - run: dotnet build -c Release --no-restore
+      - run: dotnet test -c Release --no-build
+      - run: dotnet pack -c Release --no-build -o artifacts
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            See [CHANGELOG](CHANGELOG.md) for details.
+
+            ```bash
+            dotnet add package Invoance
+            ```

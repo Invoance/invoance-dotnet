@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The XML-doc warning for missing member comments is noise for a fully documented public API;
+         keep the build clean without silencing real warnings. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Invoance</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Invoance, Inc.</Authors>
+    <Company>Invoance</Company>
+    <Description>Official .NET SDK for the Invoance compliance API</Description>
+    <PackageProjectUrl>https://invoance.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Invoance/invoance-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>invoance;compliance;attestation;cryptographic-proof;audit;audit-trail;soc2;hipaa;ed25519;tamper-evident</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon></PackageIcon>
+    <Copyright>Copyright (c) 2026 Invoance, Inc.</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Invoance.Tests" />
+  </ItemGroup>
+
+</Project>
