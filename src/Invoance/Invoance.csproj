@@ -13,7 +13,7 @@
 
   <PropertyGroup>
     <PackageId>Invoance</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Invoance, Inc.</Authors>
     <Company>Invoance</Company>
     <Description>Official .NET SDK for the Invoance compliance API</Description>
