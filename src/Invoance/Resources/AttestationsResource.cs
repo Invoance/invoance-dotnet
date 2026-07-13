@@ -80,7 +80,7 @@ public sealed class AttestationsResource
     /// payload as an untyped node.
     /// </summary>
     public Task<JsonNode?> GetRawAsync(string attestationId, CancellationToken cancellationToken = default) =>
-        _t.GetRawAsync($"/ai/attestations/{attestationId}/raw", cancellationToken);
+        _t.GetRawAsync($"/ai/attestations/{attestationId}/raw", null, cancellationToken);
 
     /// <summary>
     /// Verify by raw payload — hashes client-side, then calls verify. The

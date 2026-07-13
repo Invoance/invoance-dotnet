@@ -88,7 +88,7 @@ public sealed class AuditEventsResource
 
     /// <summary>GET /audit/events/{id}/verify — server-side verify (pinned key).</summary>
     public Task<JsonNode?> VerifyAsync(string eventId, CancellationToken cancellationToken = default) =>
-        _t.GetRawAsync($"/audit/events/{eventId}/verify", cancellationToken);
+        _t.GetRawAsync($"/audit/events/{eventId}/verify", null, cancellationToken);
 }
 
 /// <summary><c>client.Audit.Orgs</c>.</summary>
@@ -104,11 +104,38 @@ public sealed class AuditOrgsResource
         return _t.PostRawAsync("/audit/orgs", body, null, cancellationToken);
     }
 
-    public Task<JsonNode?> ListAsync(CancellationToken cancellationToken = default) =>
-        _t.GetRawAsync("/audit/orgs", cancellationToken);
+    /// <summary>GET /audit/orgs — archived orgs are excluded unless <c>IncludeArchived</c> is set.</summary>
+    public Task<JsonNode?> ListAsync(ListAuditOrgsParams? p = null, CancellationToken cancellationToken = default)
+    {
+        var query = new Dictionary<string, object?>
+        {
+            ["include_archived"] = p?.IncludeArchived,
+        };
+        return _t.GetRawAsync("/audit/orgs", query, cancellationToken);
+    }
+
+    /// <summary>Binary/source back-compat overload for the v0.1.0 signature.</summary>
+    public Task<JsonNode?> ListAsync(CancellationToken cancellationToken) =>
+        ListAsync(null, cancellationToken);
+
+    /// <summary>PATCH /audit/orgs/{id} — rename an org (a null <c>Name</c> clears it).</summary>
+    public Task<JsonNode?> UpdateAsync(string organizationId, UpdateAuditOrgParams p, CancellationToken cancellationToken = default) =>
+        _t.PatchRawAsync($"/audit/orgs/{organizationId}", new Dictionary<string, object?> { ["name"] = p.Name }, cancellationToken);
+
+    /// <summary>POST /audit/orgs/{id}/archive — idempotent; freezes new activity, history stays verifiable.</summary>
+    public Task<JsonNode?> ArchiveAsync(string organizationId, CancellationToken cancellationToken = default) =>
+        _t.PostRawAsync($"/audit/orgs/{organizationId}/archive", null, null, cancellationToken);
+
+    /// <summary>POST /audit/orgs/{id}/unarchive — idempotent.</summary>
+    public Task<JsonNode?> UnarchiveAsync(string organizationId, CancellationToken cancellationToken = default) =>
+        _t.PostRawAsync($"/audit/orgs/{organizationId}/unarchive", null, null, cancellationToken);
+
+    /// <summary>DELETE /audit/orgs/{id} — only when nothing signed would be destroyed (409 otherwise).</summary>
+    public Task<JsonNode?> DeleteAsync(string organizationId, CancellationToken cancellationToken = default) =>
+        _t.DeleteRawAsync($"/audit/orgs/{organizationId}", cancellationToken);
 
     public Task<JsonNode?> IntegrityAsync(string organizationId, CancellationToken cancellationToken = default) =>
-        _t.GetRawAsync($"/audit/orgs/{organizationId}/integrity", cancellationToken);
+        _t.GetRawAsync($"/audit/orgs/{organizationId}/integrity", null, cancellationToken);
 
     public Task<JsonNode?> SetRetentionAsync(string organizationId, int days, CancellationToken cancellationToken = default) =>
         _t.PutRawAsync($"/audit/orgs/{organizationId}/retention", new Dictionary<string, object?> { ["days"] = days }, cancellationToken);
@@ -132,7 +159,7 @@ public sealed class AuditStreamsResource
     }
 
     public Task<JsonNode?> ListAsync(string organizationId, CancellationToken cancellationToken = default) =>
-        _t.GetRawAsync($"/audit/orgs/{organizationId}/streams", cancellationToken);
+        _t.GetRawAsync($"/audit/orgs/{organizationId}/streams", null, cancellationToken);
 
     public Task<JsonNode?> DeleteAsync(string organizationId, string streamId, CancellationToken cancellationToken = default) =>
         _t.DeleteRawAsync($"/audit/orgs/{organizationId}/streams/{streamId}", cancellationToken);
@@ -181,5 +208,5 @@ public sealed class AuditExportsResource
 
     /// <summary>Poll a job; when <c>status == "ready"</c> the response has <c>download_url</c>.</summary>
     public Task<JsonNode?> GetAsync(string exportId, CancellationToken cancellationToken = default) =>
-        _t.GetRawAsync($"/audit/exports/{exportId}", cancellationToken);
+        _t.GetRawAsync($"/audit/exports/{exportId}", null, cancellationToken);
 }

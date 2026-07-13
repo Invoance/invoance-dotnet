@@ -44,6 +44,18 @@ public sealed class CreateAuditOrgParams
     public string? Name { get; set; }
 }
 
+public sealed class UpdateAuditOrgParams
+{
+    /// <summary>New display name; leave <c>null</c> to clear it (sent as JSON null).</summary>
+    public string? Name { get; set; }
+}
+
+public sealed class ListAuditOrgsParams
+{
+    /// <summary>Include archived orgs in the listing (excluded by default).</summary>
+    public bool? IncludeArchived { get; set; }
+}
+
 public sealed class CreateAuditStreamParams
 {
     public required string Url { get; set; }

@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Invoance.Exceptions;
 using Invoance.Internal;
 using Invoance.Resources;
@@ -59,16 +60,17 @@ public sealed class InvoanceClient : IDisposable
     public string BaseUrl => _config.BaseUrl;
 
     /// <summary>
-    /// Probe a cheap authenticated endpoint (<c>GET /v1/events?limit=1</c>) to
-    /// confirm the API key works. Never throws — every failure mode is turned
-    /// into a <see cref="ValidationResult"/>.
+    /// Probe the key-introspection endpoint (<c>GET /v1/me</c>) to confirm the
+    /// API key works. The endpoint requires no scope, so keys limited to e.g.
+    /// <c>audit:*</c> validate correctly. Never throws — every failure mode is
+    /// turned into a <see cref="ValidationResult"/>.
     /// </summary>
     public async Task<ValidationResult> ValidateAsync(CancellationToken cancellationToken = default)
     {
         var baseUrl = _config.BaseUrl;
         try
         {
-            await Events.ListAsync(new Models.ListEventsParams { Limit = 1 }, cancellationToken).ConfigureAwait(false);
+            await MeAsync(cancellationToken).ConfigureAwait(false);
             return new ValidationResult(true, null, baseUrl);
         }
         catch (AuthenticationException)
@@ -77,7 +79,7 @@ public sealed class InvoanceClient : IDisposable
         }
         catch (ForbiddenException)
         {
-            return new ValidationResult(true, "API key authenticated but lacks permission to list events", baseUrl);
+            return new ValidationResult(true, "API key authenticated but request blocked by IP access rules", baseUrl);
         }
         catch (QuotaExceededException)
         {
@@ -92,6 +94,15 @@ public sealed class InvoanceClient : IDisposable
             return new ValidationResult(false, e.Message, baseUrl);
         }
     }
+
+    /// <summary>
+    /// <c>GET /v1/me</c> — introspect the current API key. Returns the decoded
+    /// response (<c>organization</c>, <c>tenant</c>, <c>api_key</c>,
+    /// <c>limits</c>) as an untyped <see cref="JsonNode"/>. Throws the usual
+    /// <see cref="InvoanceException"/> hierarchy on failure.
+    /// </summary>
+    public Task<JsonNode?> MeAsync(CancellationToken cancellationToken = default) =>
+        _transport.GetRawAsync("/me", null, cancellationToken);
 
     public void Dispose() => _transport.Dispose();
 }

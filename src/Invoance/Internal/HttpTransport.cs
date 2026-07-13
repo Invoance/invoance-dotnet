@@ -44,6 +44,10 @@ public sealed class HttpTransport : IDisposable
         CancellationToken cancellationToken = default) =>
         SendJsonAsync<T>(HttpMethod.Put, path, null, body, null, cancellationToken);
 
+    public Task<T> PatchAsync<T>(string path, object? body = null,
+        CancellationToken cancellationToken = default) =>
+        SendJsonAsync<T>(HttpMethod.Patch, path, null, body, null, cancellationToken);
+
     public Task<T> DeleteAsync<T>(string path, CancellationToken cancellationToken = default) =>
         SendJsonAsync<T>(HttpMethod.Delete, path, null, null, null, cancellationToken);
 
@@ -69,8 +73,13 @@ public sealed class HttpTransport : IDisposable
     }
 
     /// <summary>GET returning the decoded JSON as an untyped value (JsonNode).</summary>
-    public Task<JsonNode?> GetRawAsync(string path, CancellationToken cancellationToken = default) =>
-        SendRawAsync(HttpMethod.Get, path, null, null, cancellationToken);
+    public Task<JsonNode?> GetRawAsync(string path, IReadOnlyDictionary<string, object?>? query = null,
+        CancellationToken cancellationToken = default) =>
+        SendRawAsync(HttpMethod.Get, path, null, null, cancellationToken, query);
+
+    /// <summary>Binary/source back-compat overload for the v0.1.0 signature.</summary>
+    public Task<JsonNode?> GetRawAsync(string path, CancellationToken cancellationToken) =>
+        GetRawAsync(path, null, cancellationToken);
 
     /// <summary>POST returning the decoded JSON as an untyped value (JsonNode).</summary>
     public Task<JsonNode?> PostRawAsync(string path, object? body = null, string? idempotencyKey = null,
@@ -82,14 +91,20 @@ public sealed class HttpTransport : IDisposable
         CancellationToken cancellationToken = default) =>
         SendRawAsync(HttpMethod.Put, path, body, null, cancellationToken);
 
+    /// <summary>PATCH returning the decoded JSON as an untyped value (JsonNode).</summary>
+    public Task<JsonNode?> PatchRawAsync(string path, object? body = null,
+        CancellationToken cancellationToken = default) =>
+        SendRawAsync(HttpMethod.Patch, path, body, null, cancellationToken);
+
     /// <summary>DELETE returning the decoded JSON as an untyped value (JsonNode).</summary>
     public Task<JsonNode?> DeleteRawAsync(string path, CancellationToken cancellationToken = default) =>
         SendRawAsync(HttpMethod.Delete, path, null, null, cancellationToken);
 
     private async Task<JsonNode?> SendRawAsync(
-        HttpMethod method, string path, object? body, string? idempotencyKey, CancellationToken cancellationToken)
+        HttpMethod method, string path, object? body, string? idempotencyKey, CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, object?>? query = null)
     {
-        var url = BuildUrl(path, null);
+        var url = BuildUrl(path, query);
         var request = new RequestContext(method.Method, path);
 
         using var msg = new HttpRequestMessage(method, url);
@@ -102,7 +117,7 @@ public sealed class HttpTransport : IDisposable
         }
 
         var idem = idempotencyKey ?? _cfg.IdempotencyKey;
-        if (!string.IsNullOrEmpty(idem) && (method == HttpMethod.Post || method == HttpMethod.Put))
+        if (!string.IsNullOrEmpty(idem) && (method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch))
         {
             msg.Headers.TryAddWithoutValidation("Idempotency-Key", idem);
         }
@@ -150,7 +165,7 @@ public sealed class HttpTransport : IDisposable
         }
 
         var idem = idempotencyKey ?? _cfg.IdempotencyKey;
-        if (!string.IsNullOrEmpty(idem) && (method == HttpMethod.Post || method == HttpMethod.Put))
+        if (!string.IsNullOrEmpty(idem) && (method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch))
         {
             msg.Headers.TryAddWithoutValidation("Idempotency-Key", idem);
         }
@@ -194,7 +209,13 @@ public sealed class HttpTransport : IDisposable
         foreach (var kv in query)
         {
             if (kv.Value == null) continue;
-            var v = Convert.ToString(kv.Value, CultureInfo.InvariantCulture) ?? "";
+            // Booleans must go out as JSON-style lowercase ("true"/"false");
+            // Convert.ToString would produce "True"/"False".
+            var v = kv.Value switch
+            {
+                bool b => b ? "true" : "false",
+                _ => Convert.ToString(kv.Value, CultureInfo.InvariantCulture) ?? "",
+            };
             parts.Add($"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(v)}");
         }
         return parts.Count > 0 ? $"{baseUrl}?{string.Join("&", parts)}" : baseUrl;
